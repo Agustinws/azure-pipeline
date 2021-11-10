@@ -248,4 +248,3 @@ stages:
               appType: '$(Parameters.WebAppKind)'
               WebAppName: '$(Parameters.WebAppName)'
               packageForLinux: '$(System.DefaultWorkingDirectory)/_OSLP_Services/Services/OSLP.Services.Api.Admin.zip'
-  ...
