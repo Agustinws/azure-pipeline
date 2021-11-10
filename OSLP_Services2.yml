@@ -1,0 +1,247 @@
+# Variable Group 'Dev-win Mobile' was defined in the Variables tab
+# Cron Schedules have been converted using UTC Time Zone and may need to be updated for your location
+schedules:
+- cron: 0 4 * * 6
+  branches:
+    include:
+    - refs/heads/dev
+
+resources:
+  repositories:
+  - repository: self
+    type: git
+    ref: refs/heads/dev
+
+pool:
+  vmImage: windows-2019
+
+stages:
+- stage: 'Build'
+  jobs:
+  - job: Build
+    displayName: Buildd
+    variables:
+      dotnetSdkVersion: '5.x'
+    steps:
+    - checkout: self
+
+    - task: UseDotNet@2
+      displayName: Use .NET Core sdk 5.x
+      inputs:
+        version: '$(dotnetSdkVersion)'
+        includePreviewVersions: true
+        performMultiLevelLookup: true
+
+    - task: NuGetCommand@2
+      displayName: NuGet restore
+      inputs:
+        solution: src/OSLP.Services.sln
+        arguments: nuget restore
+
+    - task: SonarCloudPrepare@1
+      displayName: Prepare analysis on SonarCloud
+      inputs:
+        SonarCloud: 03a2c375-eabe-4561-a576-ad454af51182
+        organization: algeiba
+        projectKey: algeiba_OSLP_Services
+        projectName: OSLP_Services
+        extraProperties: >-
+          extraProperties: |
+          sonar.cpd.exclusions = src/OSLP.Services.IdentityServer/wwwroot/**
+          sonar.exclusions = src/OSLP.Services.IdentityServer/wwwroot/**
+          sonar.test.exclusions = src/OSLP.Services.Api.Admin/appsettings.Development.json
+          sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)/*.trx
+          sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)\src\OSLP.Services.Tests\coverage.opencover.xml
+          sonar.verbose=true
+
+    - task: VSBuild@1
+      displayName: Build OSLP Services Api Admin
+      inputs:
+        solution: src/OSLP.Services.Api.Admin/OSLP.Services.Api.Admin.csproj
+        msbuildArgs: /p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactstagingdirectory)\\" /p:LangVersion="latest" /p:TargetFrameworkVersion=v5.0
+        platform: $(BuildPlatform)
+        configuration: $(BuildConfiguration)
+
+    - task: VSBuild@1
+      displayName: Build OSLP Services Api Mobile
+      inputs:
+        solution: src/OSLP.Services.Api.Mobile/OSLP.Services.Api.Mobile.csproj
+        msbuildArgs: /p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactstagingdirectory)\\" /p:LangVersion="latest" /p:TargetFrameworkVersion=v5.0
+        platform: $(BuildPlatform)
+        configuration: $(BuildConfiguration)
+
+    - task: VSBuild@1
+      displayName: Build OSLP Services Application
+      inputs:
+        solution: src/OSLP.Services.Application/OSLP.Services.Application.csproj
+        msbuildArgs: /p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactstagingdirectory)\\" /p:LangVersion="latest" /p:TargetFrameworkVersion=v5.0
+        platform: $(BuildPlatform)
+        configuration: $(BuildConfiguration)
+
+    - task: VSBuild@1
+      displayName: Build OSLP Services Domain
+      inputs:
+        solution: src/OSLP.Services.Domain/OSLP.Services.Domain.csproj
+        msbuildArgs: /p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactstagingdirectory)\\" /p:LangVersion="latest" /p:TargetFrameworkVersion=v5.0
+        platform: $(BuildPlatform)
+        configuration: $(BuildConfiguration)
+
+    - task: VSBuild@1
+      displayName: Build OSLP Services Identity Server
+      inputs:
+        solution: src/OSLP.Services.IdentityServer/OSLP.Services.IdentityServer.csproj
+        msbuildArgs: /p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactstagingdirectory)\\" /p:LangVersion="latest" /p:TargetFrameworkVersion=v5.0
+        platform: $(BuildPlatform)
+        configuration: $(BuildConfiguration)
+
+    - task: VSBuild@1
+      displayName: Build OSLP Services Infraestructure
+      inputs:
+        solution: src/OSLP.Services.Infrastructure/OSLP.Services.Infrastructure.csproj
+        msbuildArgs: /p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactstagingdirectory)\\" /p:LangVersion="latest" /p:TargetFrameworkVersion=v5.0
+        platform: $(BuildPlatform)
+        configuration: $(BuildConfiguration)
+
+    - task: VSBuild@1
+      displayName: Build OSLP Services Database
+      inputs:
+        solution: src/OSLP.Services.Database/OSLP.Services.Database.sqlproj
+        msbuildArgs: /p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactstagingdirectory)\\" /p:LangVersion="latest" /p:TargetFrameworkVersion=v4.7.2
+        platform: $(BuildPlatform)
+        configuration: $(BuildConfiguration)
+
+    - task: VSBuild@1
+      displayName: Build OSLP Services Integration
+      inputs:
+        solution: src/OSLP.Services.Api.Integration
+        msbuildArgs: /p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(build.artifactstagingdirectory)\\" /p:LangVersion="latest" /p:TargetFrameworkVersion=v5.0
+        platform: $(BuildPlatform)
+        configuration: $(BuildConfiguration)
+
+    - task: DotNetCoreCLI@2
+      displayName: dotnet test
+      inputs:
+        command: test
+        projects: src/**/*.csproj
+        custom: add package
+        arguments: /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura%2copencover --logger trx
+
+    - task: CmdLine@2
+      displayName: Create Code Coverage Report
+      inputs:
+        script: >-
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+          reportgenerator -reports:$(Build.SourcesDirectory)/**/coverage.cobertura.xml -targetdir:$(Build.SourcesDirectory)/CodeCoverage -reporttypes:HtmlInline_AzurePipelines;Cobertura
+          
+    - task: PublishCodeCoverageResults@1
+      displayName: Publish code coverage
+      inputs:
+        codeCoverageTool: Cobertura
+        summaryFileLocation: $(Build.SourcesDirectory)/CodeCoverage/Cobertura.xml
+        reportDirectory: $(Build.SourcesDirectory)/CodeCoverage
+
+    - task: SonarCloudAnalyze@1
+      displayName: Run Code Analysis
+
+    - task: SonarCloudPublish@1
+      displayName: Publish Quality Gate Result
+
+    - task: PublishSymbols@2
+      displayName: Publish symbols path
+      inputs:
+        SearchPattern: '**\bin\**\*.pdb'
+        PublishSymbols: false
+        
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Artifact: Services'
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)'
+        artifactName: Services
+
+- stage: 'Deploy'
+  displayName: 'Deploy to DEV'
+  dependsOn: Build
+  jobs:
+  - deployment: Deploy 1
+    pool:
+      vmImage: windows-2019
+    environment: dev
+    variables:
+    - group: 'Dev-win Mobile'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: Services
+
+          - task: FileTransform@1
+            displayName: 'File Transform: '
+            inputs:
+              folderPath: '$(System.DefaultWorkingDirectory)/_OSLP_Services/Services/OSLP.Services.Api.Mobile.zip'
+              fileType: json
+              targetFiles: '**/appsettings.json'
+
+          - task: AzureWebApp@1
+            displayName: 'Azure App Service Deploy: Dev'
+            inputs:
+              azureSubscription: ABC12K
+              appName: 'alg-dev-oslp-mobile-api'
+              package: '$(System.DefaultWorkingDirectory)/_OSLP_Services/Services/OSLP.Services.Api.Mobile.zip'
+              enableCustomDeployment: true              
+
+          - task: FileTransform@1
+            displayName: 'File Transform:'
+            inputs:
+              folderPath: '$(System.DefaultWorkingDirectory)/_OSLP_Services/Services/OSLP.Services.IdentityServer.zip'
+              fileType: json
+              targetFiles: '**\appsettings.json'
+          
+          - task: AzureRmWebAppDeployment@4
+            displayName: 'Azure App Service Deploy: alg-dev-oslp-ids-embed'
+            inputs:
+              azureSubscription: ABC12K
+              WebAppName: 'alg-dev-oslp-ids-embed'
+              packageForLinux: '$(System.DefaultWorkingDirectory)/_OSLP_Services/Services/OSLP.Services.IdentityServer.zip'
+
+          - task: FileTransform@1
+            displayName: 'File Transform: '
+            inputs:
+              folderPath: '$(System.DefaultWorkingDirectory)/_OSLP_Services/Services/OSLP.Services.Api.Integration.zip'
+              fileType: json
+              targetFiles: '**/appsettings.json'
+
+          - task: AzureRmWebAppDeployment@4
+            displayName: 'Deploy Azure App Service'
+            inputs:
+              azureSubscription: '$(Parameters.ConnectedServiceName)'
+              appType: '$(Parameters.WebAppKind)'
+              WebAppName: '$(Parameters.WebAppName)'
+              packageForLinux: '$(System.DefaultWorkingDirectory)/_OSLP_Services/Services/OSLP.Services.Api.Integration.zip'
+  - deployment: Deploy 2
+    pool:
+      vmImage: windows-2019
+    environment: dev
+    variables:
+    - group: 'Dev-win Admin'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: Services
+          - task: FileTransform@1
+            displayName: 'File Transform: '
+            inputs:
+              folderPath: '$(System.DefaultWorkingDirectory)/_OSLP_Services/Services/OSLP.Services.Api.Admin.zip'
+              fileType: json
+              targetFiles: '**/appsettings.json'
+          - task: AzureRmWebAppDeployment@4
+            displayName: 'Deploy Azure App Service'
+            inputs:
+              azureSubscription: '$(Parameters.ConnectedServiceName)'
+              appType: '$(Parameters.WebAppKind)'
+              WebAppName: '$(Parameters.WebAppName)'
+              packageForLinux: '$(System.DefaultWorkingDirectory)/_OSLP_Services/Services/OSLP.Services.Api.Admin.zip'
+
+  ...
