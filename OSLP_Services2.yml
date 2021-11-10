@@ -165,7 +165,7 @@ stages:
   displayName: 'Deploy to DEV'
   dependsOn: Build
   jobs:
-  - deployment: Deploy 1
+  - deployment: Deploy
     pool:
       vmImage: windows-2019
     environment: dev
@@ -221,7 +221,7 @@ stages:
               appType: '$(Parameters.WebAppKind)'
               WebAppName: '$(Parameters.WebAppName)'
               packageForLinux: '$(System.DefaultWorkingDirectory)/_OSLP_Services/Services/OSLP.Services.Api.Integration.zip'
-  - deployment: Deploy 2
+  - deployment: Deployy
     pool:
       vmImage: windows-2019
     environment: dev
