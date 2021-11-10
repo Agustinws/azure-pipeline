@@ -230,12 +230,14 @@ stages:
           steps:
           - download: current
             artifact: Services
+
           - task: FileTransform@1
-            displayName: 'File Transform: '
+            displayName: 'File Transform:'
             inputs:
               folderPath: '$(System.DefaultWorkingDirectory)/_OSLP_Services/Services/OSLP.Services.Api.Admin.zip'
               fileType: json
               targetFiles: '**/appsettings.json'
+
           - task: AzureRmWebAppDeployment@4
             displayName: 'Deploy Azure App Service'
             inputs:
@@ -243,5 +245,4 @@ stages:
               appType: '$(Parameters.WebAppKind)'
               WebAppName: '$(Parameters.WebAppName)'
               packageForLinux: '$(System.DefaultWorkingDirectory)/_OSLP_Services/Services/OSLP.Services.Api.Admin.zip'
-
   ...
